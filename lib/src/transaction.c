@@ -88,7 +88,7 @@ int begin_callback(void *cdata, neo4j_message_type_t type, const neo4j_value_t *
   assert(argc == 0 || argv != NULL);
   neo4j_transaction_t *tx = (neo4j_transaction_t *) cdata;
 
-#ifndef NEOCLIENT_BUILD  
+#ifndef NEOCLIENT_BUILD
   if (type == NEO4J_FAILURE_MESSAGE)
 #else
   if ( MESSAGE_TYPE_IS(type,FAILURE) )
@@ -105,7 +105,7 @@ int begin_callback(void *cdata, neo4j_message_type_t type, const neo4j_value_t *
       return -1;
     }
 
-#ifndef NEOCLIENT_BUILD  
+#ifndef NEOCLIENT_BUILD
   if (type == NEO4J_IGNORED_MESSAGE)
 #else
   if ( MESSAGE_TYPE_IS(type,IGNORED) )
@@ -115,7 +115,7 @@ int begin_callback(void *cdata, neo4j_message_type_t type, const neo4j_value_t *
       return 0;
     }
 
-#ifndef NEOCLIENT_BUILD  
+#ifndef NEOCLIENT_BUILD
   if (type != NEO4J_SUCCESS_MESSAGE)
 #else
   if ( !MESSAGE_TYPE_IS(type,SUCCESS) )
@@ -149,7 +149,7 @@ int tx_commit(neo4j_transaction_t *tx)
 	tx->is_open = 0;
 	tx->failed = 0;
 	tx->failure_code = neo4j_null;
-	tx->failure_message = neo4j_null;	
+	tx->failure_message = neo4j_null;
     }
     return -tx->failed;
 }
@@ -160,7 +160,7 @@ int commit_callback(void *cdata, neo4j_message_type_t type, const neo4j_value_t 
   assert(argc == 0 || argv != NULL);
   neo4j_transaction_t *tx = (neo4j_transaction_t *) cdata;
 
-#ifndef NEOCLIENT_BUILD  
+#ifndef NEOCLIENT_BUILD
   if (type == NEO4J_FAILURE_MESSAGE)
 #else
   if ( MESSAGE_TYPE_IS(type,FAILURE) )
@@ -176,7 +176,7 @@ int commit_callback(void *cdata, neo4j_message_type_t type, const neo4j_value_t 
       neo4j_log_error_errno(tx->logger, "tx commit failed");
       return -1;
     }
-#ifndef NEOCLIENT_BUILD  
+#ifndef NEOCLIENT_BUILD
   if (type == NEO4J_IGNORED_MESSAGE)
 #else
   if ( MESSAGE_TYPE_IS(type,IGNORED) )
@@ -186,7 +186,7 @@ int commit_callback(void *cdata, neo4j_message_type_t type, const neo4j_value_t 
       return 0;
     }
 
-#ifndef NEOCLIENT_BUILD  
+#ifndef NEOCLIENT_BUILD
   if (type != NEO4J_SUCCESS_MESSAGE)
 #else
   if ( !MESSAGE_TYPE_IS(type,SUCCESS) )
@@ -238,7 +238,7 @@ int rollback_callback(void *cdata, neo4j_message_type_t type, const neo4j_value_
   assert(cdata != NULL);
   assert(argc == 0 || argv != NULL);
   neo4j_transaction_t *tx = (neo4j_transaction_t *) cdata;
-#ifndef NEOCLIENT_BUILD  
+#ifndef NEOCLIENT_BUILD
   if (type == NEO4J_FAILURE_MESSAGE)
 #else
   if ( MESSAGE_TYPE_IS(type,FAILURE) )
@@ -254,7 +254,7 @@ int rollback_callback(void *cdata, neo4j_message_type_t type, const neo4j_value_
       neo4j_log_error_errno(tx->logger, "tx rollback failed");
       return -1;
     }
-#ifndef NEOCLIENT_BUILD  
+#ifndef NEOCLIENT_BUILD
   if (type == NEO4J_IGNORED_MESSAGE)
 #else
   if ( MESSAGE_TYPE_IS(type,IGNORED) )
@@ -264,7 +264,7 @@ int rollback_callback(void *cdata, neo4j_message_type_t type, const neo4j_value_
       return 0;
     }
 
-#ifndef NEOCLIENT_BUILD  
+#ifndef NEOCLIENT_BUILD
   if (type != NEO4J_SUCCESS_MESSAGE)
 #else
   if ( !MESSAGE_TYPE_IS(type,SUCCESS) )
@@ -302,7 +302,7 @@ neo4j_result_stream_t *tx_run(neo4j_transaction_t *tx,
   }
   else
   {
-      
+
       if (tx->connection->version < 4 || neo4j_tx_dbname(tx) == NULL)
       {
 	  // short circuit dbname if version isn't high enough
@@ -320,7 +320,7 @@ neo4j_result_stream_t *tx_run(neo4j_transaction_t *tx,
       tx->failure = errno;
       return NULL;
     }
-  if (neo4j_check_failure(tx->results))
+  if (neo4j_check_failure(tx->results) == NEO4J_STATEMENT_EVALUATION_FAILED)
     {
       if (strcmp(neo4j_error_code(tx->results),
                  "Neo.ClientError.Transaction.TransactionTimedOut") == 0) {
@@ -340,7 +340,7 @@ bool tx_defunct(neo4j_transaction_t *tx)
     }
     if (tx->connection != NULL &&
 	neo4j_atomic_bool_get(&(tx->connection->poison_tx)))
-    { 
+    {
 	return true;
     }
     if (tx->failed == 0) {
@@ -439,7 +439,7 @@ neo4j_result_stream_t *neo4j_run_in_tx(neo4j_transaction_t *tx, const char *stat
   neo4j_log_trace(tx->logger,
 		  "Query on %p via transaction %p\n",
 		  (void *)tx->connection, (void *)tx);
-  
+
   return tx->run(tx, statement, params, 0);
 }
 
