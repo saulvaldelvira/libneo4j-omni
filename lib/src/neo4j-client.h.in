@@ -1772,7 +1772,7 @@ char *neo4j_adotdir(const char *append);
  *         (errno will be set).
  */
 __neo4j_must_check
-neo4j_connection_t *neo4j_connect(const char *uri, neo4j_config_t *config,
+neo4j_connection_t *neo4j_connect(const char *uri, const neo4j_config_t *config,
         uint_fast32_t flags);
 
 /**
