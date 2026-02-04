@@ -83,10 +83,10 @@ struct neo4j_connection_factory neo4j_std_connection_factory =
 
 
 neo4j_connection_t *neo4j_connect(const char *uri_string,
-        neo4j_config_t *config, uint_fast32_t flags)
+        const neo4j_config_t *cfg, uint_fast32_t flags)
 {
     REQUIRE(uri_string != NULL, NULL);
-    config = neo4j_config_dup(config);
+    neo4j_config_t *config = neo4j_config_dup(cfg);
     if (config == NULL)
     {
         return NULL;
