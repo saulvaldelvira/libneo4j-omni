@@ -17,6 +17,7 @@
 #include "../../config.h"
 #include "values.h"
 #include "iostream.h"
+#include "neo4j-client.h"
 #include "print.h"
 #include "serialization.h"
 #include "util.h"
@@ -320,7 +321,7 @@ struct neo4j_value_vts
     const struct neo4j_value_vt *point2d_vt;
     const struct neo4j_value_vt *point3d_vt;
     const struct neo4j_value_vt *identity_vt;
-    const struct neo4j_value_vt *elementid_vt;    
+    const struct neo4j_value_vt *elementid_vt;
     const struct neo4j_value_vt *struct_vt;
     const struct neo4j_value_vt *bytes_vt;
 };
@@ -343,7 +344,7 @@ static const struct neo4j_value_vts neo4j_value_vts =
     .localdatetime_vt = &localdatetime_vt,
     .duration_vt = &duration_vt,
     .point2d_vt = &point2d_vt,
-    .point3d_vt = &point3d_vt,    
+    .point3d_vt = &point3d_vt,
     .identity_vt = &identity_vt,
     .elementid_vt = &elementid_vt,
     .struct_vt = &struct_vt,
@@ -374,7 +375,7 @@ static const struct neo4j_value_vts neo4j_value_vts =
 #define POINT2D_VT_OFF VT_OFFSET(point2d_vt)
 #define POINT3D_VT_OFF VT_OFFSET(point3d_vt)
 #define IDENTITY_VT_OFF VT_OFFSET(identity_vt)
-#define ELEMENTID_VT_OFF VT_OFFSET(elementid_vt)    
+#define ELEMENTID_VT_OFF VT_OFFSET(elementid_vt)
 #define STRUCT_VT_OFF VT_OFFSET(struct_vt)
 #define BYTES_VT_OFF VT_OFFSET(bytes_vt)
 static const uint8_t _MAX_VT_OFF =
@@ -438,6 +439,11 @@ bool neo4j_eq(neo4j_value_t value1, neo4j_value_t value2)
 // constructors and accessors
 /////////////////////////////
 
+#define to_value(src_ty, init, ...) \
+    ((union { struct src_ty src; neo4j_value_t v; }) { \
+        .src = init  __VA_OPT__(,) __VA_ARGS__ \
+    }.v)
+
 // null
 
 const neo4j_value_t neo4j_null =
@@ -453,10 +459,9 @@ static bool null_eq(const neo4j_value_t *value, const neo4j_value_t *other)
 
 neo4j_value_t neo4j_bool(bool value)
 {
-    struct neo4j_bool v =
+    return to_value(neo4j_bool,
         { ._type = NEO4J_BOOL, ._vt_off = BOOL_VT_OFF,
-          .value = value? 1 : 0 };
-    return *((neo4j_value_t *)(&v));
+          .value = value? 1 : 0 });
 }
 
 
@@ -489,9 +494,8 @@ neo4j_value_t neo4j_int(long long value)
         value = INT64_MAX;
     }
 #endif
-    struct neo4j_int v =
-        { ._type = NEO4J_INT, ._vt_off = INT_VT_OFF, .value = value };
-    return *((neo4j_value_t *)(&v));
+    return to_value(neo4j_int,
+        { ._type = NEO4J_INT, ._vt_off = INT_VT_OFF, .value = value });
 }
 
 
@@ -514,9 +518,8 @@ long long neo4j_int_value(neo4j_value_t value)
 
 neo4j_value_t neo4j_float(double value)
 {
-    struct neo4j_float v =
-        { ._type = NEO4J_FLOAT, ._vt_off = FLOAT_VT_OFF, .value = value };
-    return *((neo4j_value_t *)(&v));
+    return to_value(neo4j_float,
+        { ._type = NEO4J_FLOAT, ._vt_off = FLOAT_VT_OFF, .value = value });
 }
 
 
@@ -545,10 +548,9 @@ neo4j_value_t neo4j_ustring(const char *u, unsigned int n)
         n = UINT32_MAX;
     }
 #endif
-    struct neo4j_string v =
+    return to_value(neo4j_string,
         { ._type = NEO4J_STRING, ._vt_off = STRING_VT_OFF,
-          .ustring = u, .length = n };
-    return *((neo4j_value_t *)(&v));
+          .ustring = u, .length = n });
 }
 
 
@@ -591,7 +593,6 @@ char *neo4j_string_value(neo4j_value_t value, char *buffer, size_t length)
     return buffer;
 }
 
-
 // bytes
 
 neo4j_value_t neo4j_bytes(const char *u, unsigned int n)
@@ -602,10 +603,9 @@ neo4j_value_t neo4j_bytes(const char *u, unsigned int n)
         n = UINT32_MAX;
     }
 #endif
-    struct neo4j_bytes v =
+    return to_value(neo4j_bytes,
         { ._type = NEO4J_BYTES, ._vt_off = BYTES_VT_OFF,
-          .bytes = u, .length = n };
-    return *((neo4j_value_t *)(&v));
+            .bytes = u, .length = n });
 }
 
 
@@ -645,10 +645,9 @@ neo4j_value_t neo4j_list(const neo4j_value_t *items, unsigned int n)
         n = UINT32_MAX;
     }
 #endif
-    struct neo4j_list v =
+    return to_value(neo4j_list,
         { ._type = NEO4J_LIST, ._vt_off = LIST_VT_OFF,
-          .items = items, .length = n };
-    return *((neo4j_value_t *)(&v));
+              .items = items, .length = n });
 }
 
 
@@ -711,11 +710,9 @@ neo4j_value_t neo4j_map(const neo4j_map_entry_t *entries, unsigned int n)
             return neo4j_null;
         }
     }
-
-    struct neo4j_map v =
+    return to_value(neo4j_map,
         { ._type = NEO4J_MAP, ._vt_off = MAP_VT_OFF,
-          .entries = entries, .nentries = n };
-    return *((neo4j_value_t *)(&v));
+          .entries = entries, .nentries = n });
 }
 
 
@@ -818,11 +815,10 @@ neo4j_value_t neo4j_node(const neo4j_value_t fields[4])
         }
     }
 
-    struct neo4j_struct v =
+    return to_value(neo4j_struct,
             { ._type = NEO4J_NODE, ._vt_off = NODE_VT_OFF,
               .signature = NEO4J_NODE_SIGNATURE,
-              .fields = fields, .nfields = 4 };
-    return *((neo4j_value_t *)(&v));
+              .fields = fields, .nfields = 4 });
 }
 
 
@@ -885,11 +881,10 @@ neo4j_value_t neo4j_relationship(const neo4j_value_t fields[8])
         return neo4j_null;
     }
 
-    struct neo4j_struct v =
+    return to_value(neo4j_struct,
             { ._type = NEO4J_RELATIONSHIP, ._vt_off = RELATIONSHIP_VT_OFF,
               .signature = NEO4J_REL_SIGNATURE,
-              .fields = fields, .nfields = 8 };
-    return *((neo4j_value_t *)(&v));
+              .fields = fields, .nfields = 8 });
 }
 
 
@@ -905,11 +900,10 @@ neo4j_value_t neo4j_unbound_relationship(const neo4j_value_t fields[4])
         return neo4j_null;
     }
 
-    struct neo4j_struct v =
+    return to_value(neo4j_struct,
             { ._type = NEO4J_RELATIONSHIP, ._vt_off = RELATIONSHIP_VT_OFF,
               .signature = NEO4J_REL_SIGNATURE,
-              .fields = fields, .nfields = 4 };
-    return *((neo4j_value_t *)(&v));
+              .fields = fields, .nfields = 4 });
 }
 
 
@@ -1262,7 +1256,7 @@ struct timespec *neo4j_time_timespec(neo4j_value_t value)
     REQUIRE(neo4j_type(value) == NEO4J_TIME, 0);
     struct timespec *ts = (struct timespec *) malloc(sizeof(struct timespec));
     ts->tv_sec = (time_t) (
-	neo4j_int_value(((const struct neo4j_struct *)&value)->fields[0]) / 1000000000 
+	neo4j_int_value(((const struct neo4j_struct *)&value)->fields[0]) / 1000000000
 	);
     ts->tv_nsec = (long int) neo4j_int_value(
         ((const struct neo4j_struct *)&value)->fields[0]) % 1000000000;
@@ -1402,7 +1396,7 @@ neo4j_value_t neo4j_duration(const neo4j_value_t fields[4])
     if (neo4j_type(fields[0]) != NEO4J_INT ||
 	neo4j_type(fields[1]) != NEO4J_INT ||
 	neo4j_type(fields[2]) != NEO4J_INT ||
-	neo4j_type(fields[3]) != NEO4J_INT)	
+	neo4j_type(fields[3]) != NEO4J_INT)
     {
         errno = EINVAL;
         return neo4j_null;
@@ -1484,7 +1478,7 @@ neo4j_value_t neo4j_point3d(const neo4j_value_t fields[4])
     if (neo4j_type(fields[0]) != NEO4J_INT ||
 	neo4j_type(fields[1]) != NEO4J_FLOAT ||
 	neo4j_type(fields[2]) != NEO4J_FLOAT ||
-	neo4j_type(fields[3]) != NEO4J_FLOAT)	
+	neo4j_type(fields[3]) != NEO4J_FLOAT)
     {
         errno = EINVAL;
         return neo4j_null;
