@@ -65,7 +65,7 @@ int neo4j_check_known_hosts(const char * restrict hostname, int port,
         goto cleanup;
     }
 
-    char existing[NEO4J_MAX_FINGERPRINT_LENGTH];
+    char existing[NEO4J_MAX_FINGERPRINT_LENGTH] = {0};
     result = retrieve_stored_fingerprint(file, host,
                 existing, sizeof(existing), logger);
 
