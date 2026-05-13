@@ -444,6 +444,14 @@ bool neo4j_eq(neo4j_value_t value1, neo4j_value_t value2)
         .src = init  __VA_OPT__(,) __VA_ARGS__ \
     }.v)
 
+#define unwrap(dst, dst_ty, val) \
+    memcpy(&dst, val, sizeof(dst_ty));
+
+#define from_value(name, dst_ty, e) \
+    dst_ty name; \
+    unwrap(name, dst_ty, e);
+
+
 // null
 
 const neo4j_value_t neo4j_null =
@@ -452,6 +460,7 @@ const neo4j_value_t neo4j_null =
 
 static bool null_eq(const neo4j_value_t *value, const neo4j_value_t *other)
 {
+    (void)value; (void)other;
     return true;
 }
 
@@ -467,16 +476,17 @@ neo4j_value_t neo4j_bool(bool value)
 
 bool bool_eq(const neo4j_value_t *value, const neo4j_value_t *other)
 {
-    const struct neo4j_bool *v = (const struct neo4j_bool *)value;
-    const struct neo4j_bool *o = (const struct neo4j_bool *)other;
-    return v->value == o->value;
+    from_value(v, struct neo4j_bool, value);
+    from_value(o, struct neo4j_bool, other);
+    return v.value == o.value;
 }
 
 
 bool neo4j_bool_value(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_BOOL, false);
-    return ((const struct neo4j_bool *)&value)->value? true : false;
+    from_value(v, struct neo4j_bool, &value);
+    return v.value ? true : false;
 }
 
 
@@ -501,16 +511,17 @@ neo4j_value_t neo4j_int(long long value)
 
 bool int_eq(const neo4j_value_t *value, const neo4j_value_t *other)
 {
-    const struct neo4j_int *v = (const struct neo4j_int *)value;
-    const struct neo4j_int *o = (const struct neo4j_int *)other;
-    return v->value == o->value;
+    from_value(v, struct neo4j_int, value);
+    from_value(o, struct neo4j_int, other);
+    return v.value == o.value;
 }
 
 
 long long neo4j_int_value(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_INT, 0);
-    return ((const struct neo4j_int *)&value)->value;
+    from_value(v, struct neo4j_int, &value);
+    return v.value;
 }
 
 
@@ -525,16 +536,17 @@ neo4j_value_t neo4j_float(double value)
 
 bool float_eq(const neo4j_value_t *value, const neo4j_value_t *other)
 {
-    const struct neo4j_float *v = (const struct neo4j_float *)value;
-    const struct neo4j_float *o = (const struct neo4j_float *)other;
-    return v->value == o->value;
+    from_value(v, struct neo4j_float, value);
+    from_value(o, struct neo4j_float, other);
+    return v.value == o.value;
 }
 
 
 double neo4j_float_value(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_FLOAT, 0.0);
-    return ((const struct neo4j_float *)&value)->value;
+    from_value(v, struct neo4j_float, &value);
+    return v.value;
 }
 
 
@@ -556,13 +568,13 @@ neo4j_value_t neo4j_ustring(const char *u, unsigned int n)
 
 bool string_eq(const neo4j_value_t *value, const neo4j_value_t *other)
 {
-    const struct neo4j_string *v = (const struct neo4j_string *)value;
-    const struct neo4j_string *o = (const struct neo4j_string *)other;
-    if (v->length != o->length)
+    from_value(v, struct neo4j_string, value);
+    from_value(o, struct neo4j_string, other);
+    if (v.length != o.length)
     {
         return false;
     }
-    return strncmp(v->ustring, o->ustring, v->length) == 0;
+    return strncmp(v.ustring, o.ustring, v.length) == 0;
 }
 
 
@@ -570,7 +582,8 @@ unsigned int neo4j_string_length(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_STRING ||
 	    neo4j_type(value) == NEO4J_ELEMENTID, 0);
-    return ((const struct neo4j_string *)&value)->length;
+    from_value(v, struct neo4j_string, &value);
+    return v.length;
 }
 
 
@@ -578,7 +591,8 @@ const char *neo4j_ustring_value(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_STRING ||
 	    neo4j_type(value) == NEO4J_ELEMENTID, NULL);
-    return ((const struct neo4j_string *)&value)->ustring;
+    from_value(v, struct neo4j_string, &value);
+    return v.ustring;
 }
 
 
@@ -586,9 +600,9 @@ char *neo4j_string_value(neo4j_value_t value, char *buffer, size_t length)
 {
     REQUIRE(neo4j_type(value) == NEO4J_STRING ||
 	    neo4j_type(value) == NEO4J_ELEMENTID, NULL);
-    const struct neo4j_string *v = (const struct neo4j_string *)&value;
-    size_t tocopy = min(v->length, length-1);
-    memcpy(buffer, v->ustring, tocopy);
+    from_value(v, struct neo4j_string, &value);
+    size_t tocopy = min(v.length, length-1);
+    memcpy(buffer, v.ustring, tocopy);
     buffer[tocopy] = '\0';
     return buffer;
 }
@@ -611,27 +625,29 @@ neo4j_value_t neo4j_bytes(const char *u, unsigned int n)
 
 bool bytes_eq(const neo4j_value_t *value, const neo4j_value_t *other)
 {
-    const struct neo4j_bytes *v = (const struct neo4j_bytes *)value;
-    const struct neo4j_bytes *o = (const struct neo4j_bytes *)other;
-    if (v->length != o->length)
+    from_value(v, struct neo4j_bytes, value);
+    from_value(o, struct neo4j_bytes, other);
+    if (v.length != o.length)
     {
         return false;
     }
-    return memcmp(v->bytes, o->bytes, v->length) == 0;
+    return memcmp(v.bytes, o.bytes, v.length) == 0;
 }
 
 
 unsigned int neo4j_bytes_length(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_BYTES, 0);
-    return ((const struct neo4j_bytes *)&value)->length;
+    from_value(v, struct neo4j_bytes, &value);
+    return v.length;
 }
 
 
 const char *neo4j_bytes_value(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_BYTES, NULL);
-    return ((const struct neo4j_bytes *)&value)->bytes;
+    from_value(v, struct neo4j_bytes, &value);
+    return v.bytes;
 }
 
 
@@ -653,17 +669,17 @@ neo4j_value_t neo4j_list(const neo4j_value_t *items, unsigned int n)
 
 bool list_eq(const neo4j_value_t *value, const neo4j_value_t *other)
 {
-    const struct neo4j_list *v = (const struct neo4j_list *)value;
-    const struct neo4j_list *o = (const struct neo4j_list *)other;
+    from_value(v, struct neo4j_list, value);
+    from_value(o, struct neo4j_list, other);
 
-    if (v->length != o->length)
+    if (v.length != o.length)
     {
         return false;
     }
 
-    for (unsigned int i = 0; i < v->length; ++i)
+    for (unsigned int i = 0; i < v.length; ++i)
     {
-        if (!neo4j_eq(v->items[i], o->items[i]))
+        if (!neo4j_eq(v.items[i], o.items[i]))
         {
             return false;
         }
@@ -676,19 +692,20 @@ bool list_eq(const neo4j_value_t *value, const neo4j_value_t *other)
 unsigned int neo4j_list_length(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_LIST, 0);
-    return ((const struct neo4j_list *)&value)->length;
+    from_value(v, struct neo4j_list, &value);
+    return v.length;
 }
 
 
 neo4j_value_t neo4j_list_get(neo4j_value_t value, unsigned int index)
 {
     REQUIRE(neo4j_type(value) == NEO4J_LIST, neo4j_null);
-    const struct neo4j_list *list = (const struct neo4j_list *)&value;
-    if (list->length <= index)
+    from_value(list, struct neo4j_list, &value);
+    if (list.length <= index)
     {
         return neo4j_null;
     }
-    return list->items[index];
+    return list.items[index];
 }
 
 
@@ -718,23 +735,23 @@ neo4j_value_t neo4j_map(const neo4j_map_entry_t *entries, unsigned int n)
 
 bool map_eq(const neo4j_value_t *value, const neo4j_value_t *other)
 {
-    const struct neo4j_map *v = (const struct neo4j_map *)value;
-    const struct neo4j_map *o = (const struct neo4j_map *)other;
+    from_value(v, struct neo4j_map, value);
+    from_value(o, struct neo4j_map, other);
 
-    if (v->nentries != o->nentries)
+    if (v.nentries != o.nentries)
     {
         return false;
     }
 
-    for (unsigned int i = 0; i < v->nentries; ++i)
+    for (unsigned int i = 0; i < v.nentries; ++i)
     {
-        const neo4j_map_entry_t *ventry = &(v->entries[i]);
+        const neo4j_map_entry_t *ventry = &(v.entries[i]);
         const neo4j_map_entry_t *oentry = NULL;
-        for (unsigned int j = 0; j < o->nentries; ++j)
+        for (unsigned int j = 0; j < o.nentries; ++j)
         {
-            if (neo4j_eq(ventry->key, o->entries[j].key))
+            if (neo4j_eq(ventry->key, o.entries[j].key))
             {
-                oentry = &(o->entries[j]);
+                oentry = &(o.entries[j]);
                 break;
             }
         }
@@ -750,7 +767,8 @@ bool map_eq(const neo4j_value_t *value, const neo4j_value_t *other)
 unsigned int neo4j_map_size(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_MAP, 0);
-    return ((const struct neo4j_map *)&value)->nentries;
+    from_value(map, struct neo4j_map, &value);
+    return map.nentries;
 }
 
 
@@ -758,24 +776,24 @@ const neo4j_map_entry_t *neo4j_map_getentry(neo4j_value_t value,
         unsigned int index)
 {
     REQUIRE(neo4j_type(value) == NEO4J_MAP, 0);
-    const struct neo4j_map *map = (const struct neo4j_map *)&value;
+    from_value(map, struct neo4j_map, &value);
 
-    if (map->nentries <= index)
+    if (map.nentries <= index)
     {
         return NULL;
     }
-    return &(map->entries[index]);
+    return &(map.entries[index]);
 }
 
 
 neo4j_value_t neo4j_map_kget(neo4j_value_t value, neo4j_value_t key)
 {
     REQUIRE(neo4j_type(value) == NEO4J_MAP, neo4j_null);
-    const struct neo4j_map *map = (const struct neo4j_map *)&value;
+    from_value(map, struct neo4j_map, &value);
 
-    for (unsigned int i = 0; i < map->nentries; ++i)
+    for (unsigned int i = 0; i < map.nentries; ++i)
     {
-        const neo4j_map_entry_t *entry = &(map->entries[i]);
+        const neo4j_map_entry_t *entry = &(map.entries[i]);
         if (neo4j_eq(entry->key, key))
         {
             return entry->value;
@@ -805,10 +823,10 @@ neo4j_value_t neo4j_node(const neo4j_value_t fields[4])
         errno = EINVAL;
         return neo4j_null;
     }
-    const struct neo4j_list *labels = (const struct neo4j_list *)&(fields[1]);
-    for (unsigned int i = 0; i < labels->length; ++i)
+    from_value(labels, struct neo4j_list, (&fields[1]));
+    for (unsigned int i = 0; i < labels.length; ++i)
     {
-        if (neo4j_type(labels->items[i]) != NEO4J_STRING)
+        if (neo4j_type(labels.items[i]) != NEO4J_STRING)
         {
             errno = NEO4J_INVALID_LABEL_TYPE;
             return neo4j_null;
@@ -825,39 +843,39 @@ neo4j_value_t neo4j_node(const neo4j_value_t fields[4])
 neo4j_value_t neo4j_node_labels(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_NODE, neo4j_null);
-    const struct neo4j_struct *v = (const struct neo4j_struct *)&value;
-    assert(v->nfields == 4 || v->nfields == 3);
-    assert(neo4j_type(v->fields[1]) == NEO4J_LIST);
-    return v->fields[1];
+    from_value(v, struct neo4j_struct, &value);
+    assert(v.nfields == 4 || v.nfields == 3);
+    assert(neo4j_type(v.fields[1]) == NEO4J_LIST);
+    return v.fields[1];
 }
 
 
 neo4j_value_t neo4j_node_properties(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_NODE, neo4j_null);
-    const struct neo4j_struct *v = (const struct neo4j_struct *)&value;
-    assert(v->nfields == 4 || v->nfields == 3);
-    assert(neo4j_type(v->fields[2]) == NEO4J_MAP);
-    return v->fields[2];
+    from_value(v, struct neo4j_struct, &value);
+    assert(v.nfields == 4 || v.nfields == 3);
+    assert(neo4j_type(v.fields[2]) == NEO4J_MAP);
+    return v.fields[2];
 }
 
 
 neo4j_value_t neo4j_node_identity(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_NODE, neo4j_null);
-    const struct neo4j_struct *v = (const struct neo4j_struct *)&value;
-    assert(v->nfields == 4 || v->nfields == 3);
-    assert(neo4j_type(v->fields[0]) == NEO4J_IDENTITY);
-    return v->fields[0];
+    from_value(v, struct neo4j_struct, &value);
+    assert(v.nfields == 4 || v.nfields == 3);
+    assert(neo4j_type(v.fields[0]) == NEO4J_IDENTITY);
+    return v.fields[0];
 }
 
 neo4j_value_t neo4j_node_elementid(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_NODE, neo4j_null);
-    const struct neo4j_struct *v = (const struct neo4j_struct *)&value;
-    assert(v->nfields == 4);
-    assert(neo4j_type(v->fields[3]) == NEO4J_ELEMENTID);
-    return v->fields[3];
+    from_value(v, struct neo4j_struct, &value);
+    assert(v.nfields == 4);
+    assert(neo4j_type(v.fields[3]) == NEO4J_ELEMENTID);
+    return v.fields[3];
 }
 
 
@@ -910,17 +928,17 @@ neo4j_value_t neo4j_unbound_relationship(const neo4j_value_t fields[4])
 neo4j_value_t neo4j_relationship_type(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_RELATIONSHIP, neo4j_null);
-    const struct neo4j_struct *v = (const struct neo4j_struct *)&value;
-    if (v->nfields == 8)
+    from_value(v, struct neo4j_struct, &value);
+    if (v.nfields == 8)
     {
-        assert(neo4j_type(v->fields[3]) == NEO4J_STRING);
-        return v->fields[3];
+        assert(neo4j_type(v.fields[3]) == NEO4J_STRING);
+        return v.fields[3];
     }
     else
     {
-        assert(v->nfields == 4);
-        assert(neo4j_type(v->fields[1]) == NEO4J_STRING);
-        return v->fields[1];
+        assert(v.nfields == 4);
+        assert(neo4j_type(v.fields[1]) == NEO4J_STRING);
+        return v.fields[1];
     }
 }
 
@@ -928,17 +946,17 @@ neo4j_value_t neo4j_relationship_type(neo4j_value_t value)
 neo4j_value_t neo4j_relationship_properties(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_RELATIONSHIP, neo4j_null);
-    const struct neo4j_struct *v = (const struct neo4j_struct *)&value;
-    if (v->nfields == 8 || v->nfields == 5)
+    from_value(v, struct neo4j_struct, &value);
+    if (v.nfields == 8 || v.nfields == 5)
     {
-        assert(neo4j_type(v->fields[4]) == NEO4J_MAP);
-        return v->fields[4];
+        assert(neo4j_type(v.fields[4]) == NEO4J_MAP);
+        return v.fields[4];
     }
     else
     {
-        assert(v->nfields == 4 || v->nfields == 3);
-        assert(neo4j_type(v->fields[2]) == NEO4J_MAP);
-        return v->fields[2];
+        assert(v.nfields == 4 || v.nfields == 3);
+        assert(neo4j_type(v.fields[2]) == NEO4J_MAP);
+        return v.fields[2];
     }
 }
 
@@ -946,22 +964,22 @@ neo4j_value_t neo4j_relationship_properties(neo4j_value_t value)
 neo4j_value_t neo4j_relationship_identity(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_RELATIONSHIP, neo4j_null);
-    const struct neo4j_struct *v = (const struct neo4j_struct *)&value;
-    assert(v->nfields == 4 || v->nfields == 8 ||
-	   v->nfields == 3 || v->nfields == 5);
-    assert(neo4j_type(v->fields[0]) == NEO4J_IDENTITY);
-    return v->fields[0];
+    from_value(v, struct neo4j_struct, &value);
+    assert(v.nfields == 4 || v.nfields == 8 ||
+	   v.nfields == 3 || v.nfields == 5);
+    assert(neo4j_type(v.fields[0]) == NEO4J_IDENTITY);
+    return v.fields[0];
 }
 
 
 neo4j_value_t neo4j_relationship_start_node_identity(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_RELATIONSHIP, neo4j_null);
-    const struct neo4j_struct *v = (const struct neo4j_struct *)&value;
-    if (v->nfields == 5 || v->nfields == 8)
+    from_value(v, struct neo4j_struct, &value);
+    if (v.nfields == 5 || v.nfields == 8)
     {
-        assert(neo4j_type(v->fields[1]) == NEO4J_IDENTITY);
-        return v->fields[1];
+        assert(neo4j_type(v.fields[1]) == NEO4J_IDENTITY);
+        return v.fields[1];
     }
     else
     {
@@ -973,11 +991,11 @@ neo4j_value_t neo4j_relationship_start_node_identity(neo4j_value_t value)
 neo4j_value_t neo4j_relationship_end_node_identity(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_RELATIONSHIP, neo4j_null);
-    const struct neo4j_struct *v = (const struct neo4j_struct *)&value;
-    if (v->nfields == 5 || v->nfields == 8)
+    from_value(v, struct neo4j_struct, &value);
+    if (v.nfields == 5 || v.nfields == 8)
     {
-        assert(neo4j_type(v->fields[2]) == NEO4J_IDENTITY);
-        return v->fields[2];
+        assert(neo4j_type(v.fields[2]) == NEO4J_IDENTITY);
+        return v.fields[2];
     }
     else
     {
@@ -990,17 +1008,17 @@ neo4j_value_t neo4j_relationship_end_node_identity(neo4j_value_t value)
 neo4j_value_t neo4j_relationship_elementid(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_RELATIONSHIP, neo4j_null);
-    const struct neo4j_struct *v = (const struct neo4j_struct *)&value;
-    if (v->nfields == 8)
+    from_value(v, struct neo4j_struct, &value);
+    if (v.nfields == 8)
     {
-	assert(neo4j_type(v->fields[5]) == NEO4J_ELEMENTID);
-	return v->fields[5];
+	assert(neo4j_type(v.fields[5]) == NEO4J_ELEMENTID);
+	return v.fields[5];
     }
     else
     {
-	assert( v->nfields == 4 );
-	assert(neo4j_type(v->fields[3]) == NEO4J_ELEMENTID);
-	return v->fields[3];
+	assert( v.nfields == 4 );
+	assert(neo4j_type(v.fields[3]) == NEO4J_ELEMENTID);
+	return v.fields[3];
     }
 }
 
@@ -1008,11 +1026,11 @@ neo4j_value_t neo4j_relationship_elementid(neo4j_value_t value)
 neo4j_value_t neo4j_relationship_start_node_elementid(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_RELATIONSHIP, neo4j_null);
-    const struct neo4j_struct *v = (const struct neo4j_struct *)&value;
-    if (v->nfields == 8)
+    from_value(v, struct neo4j_struct, &value);
+    if (v.nfields == 8)
     {
-        assert(neo4j_type(v->fields[6]) == NEO4J_ELEMENTID);
-        return v->fields[6];
+        assert(neo4j_type(v.fields[6]) == NEO4J_ELEMENTID);
+        return v.fields[6];
     }
     else
     {
@@ -1024,11 +1042,11 @@ neo4j_value_t neo4j_relationship_start_node_elementid(neo4j_value_t value)
 neo4j_value_t neo4j_relationship_end_node_elementid(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_RELATIONSHIP, neo4j_null);
-    const struct neo4j_struct *v = (const struct neo4j_struct *)&value;
-    if (v->nfields == 8)
+    from_value(v, struct neo4j_struct, &value);
+    if (v.nfields == 8)
     {
-        assert(neo4j_type(v->fields[7]) == NEO4J_ELEMENTID);
-        return v->fields[7];
+        assert(neo4j_type(v.fields[7]) == NEO4J_ELEMENTID);
+        return v.fields[7];
     }
     else
     {
@@ -1049,72 +1067,70 @@ neo4j_value_t neo4j_path(const neo4j_value_t fields[3])
         return neo4j_null;
     }
 
-    const struct neo4j_list *nodes = (const struct neo4j_list *)&(fields[0]);
-    for (unsigned int i = 0; i < nodes->length; ++i)
+    from_value(nodes, struct neo4j_list, (&fields[0]));
+    for (unsigned int i = 0; i < nodes.length; ++i)
     {
-        if (neo4j_type(nodes->items[i]) != NEO4J_NODE)
+        if (neo4j_type(nodes.items[i]) != NEO4J_NODE)
         {
             errno = NEO4J_INVALID_PATH_NODE_TYPE;
             return neo4j_null;
         }
     }
 
-    const struct neo4j_list *rels = (const struct neo4j_list *)&(fields[1]);
-    for (unsigned int i = 0; i < rels->length; ++i)
+    from_value(rels, struct neo4j_list, (&fields[1]));
+    for (unsigned int i = 0; i < rels.length; ++i)
     {
-        if (neo4j_type(rels->items[i]) != NEO4J_RELATIONSHIP)
+        if (neo4j_type(rels.items[i]) != NEO4J_RELATIONSHIP)
         {
             errno = NEO4J_INVALID_PATH_RELATIONSHIP_TYPE;
             return neo4j_null;
         }
     }
 
-    const struct neo4j_list *seq = (const struct neo4j_list *)&(fields[2]);
-    if ((seq->length % 2) != 0)
+    from_value(seq, struct neo4j_list, (&fields[2]));
+    if ((seq.length % 2) != 0)
     {
         errno = NEO4J_INVALID_PATH_SEQUENCE_LENGTH;
         return neo4j_null;
     }
-    for (unsigned int i = 0; i < seq->length; i += 2)
+    for (unsigned int i = 0; i < seq.length; i += 2)
     {
-        if (neo4j_type(seq->items[i]) != NEO4J_INT ||
-            neo4j_type(seq->items[i+1]) != NEO4J_INT)
+        if (neo4j_type(seq.items[i]) != NEO4J_INT ||
+            neo4j_type(seq.items[i+1]) != NEO4J_INT)
         {
             errno = NEO4J_INVALID_PATH_SEQUENCE_IDX_TYPE;
             return neo4j_null;
         }
-        const struct neo4j_int *idx =
-            (const struct neo4j_int *)&(seq->items[i]);
-        if (idx->value == 0 || idx->value > rels->length ||
-            -(idx->value) > rels->length)
+        from_value(idx, struct neo4j_int, (&seq.items[i]));
+        if (idx.value == 0 || idx.value > rels.length ||
+            -(idx.value) > rels.length)
         {
             errno = NEO4J_INVALID_PATH_SEQUENCE_IDX_RANGE;
             return neo4j_null;
         }
 
-        idx = (const struct neo4j_int *)&(seq->items[i+1]);
-        if (idx->value < 0 || idx->value >= nodes->length)
+        unwrap(idx, struct neo4j_int, (&seq.items[i+1]));
+        if (idx.value < 0 || idx.value >= nodes.length)
         {
             errno = NEO4J_INVALID_PATH_SEQUENCE_IDX_RANGE;
             return neo4j_null;
         }
     }
 
-    struct neo4j_struct v =
-            { ._type = NEO4J_PATH, ._vt_off = PATH_VT_OFF,
-              .signature = NEO4J_PATH_SIGNATURE,
-              .fields = fields, .nfields = 3 };
-    return *((neo4j_value_t *)(&v));
+    return to_value(neo4j_struct,
+        { ._type = NEO4J_PATH, ._vt_off = PATH_VT_OFF,
+            .signature = NEO4J_PATH_SIGNATURE,
+            .fields = fields, .nfields = 3 });
 }
 
 
 unsigned int neo4j_path_length(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_PATH, 0);
-    const struct neo4j_struct *v = (const struct neo4j_struct *)&value;
-    assert(v->nfields == 3);
-    assert(neo4j_type(v->fields[2]) == NEO4J_LIST);
-    unsigned int slength = neo4j_list_length(v->fields[2]);
+    from_value(v, struct neo4j_struct, &value);
+    assert(v.nfields == 3);
+    assert(neo4j_type(v.fields[2]) == NEO4J_LIST);
+    unsigned int slength = neo4j_list_length(v.fields[2]);
     assert((slength % 2) == 0);
     return slength / 2;
 }
@@ -1123,34 +1139,33 @@ unsigned int neo4j_path_length(neo4j_value_t value)
 neo4j_value_t neo4j_path_get_node(neo4j_value_t value, unsigned int hops)
 {
     REQUIRE(neo4j_type(value) == NEO4J_PATH, neo4j_null);
-    const struct neo4j_struct *v = (const struct neo4j_struct *)&value;
-    assert(v->nfields == 3);
-    assert(neo4j_type(v->fields[0]) == NEO4J_LIST);
-    assert(neo4j_type(v->fields[2]) == NEO4J_LIST);
+    from_value(v, struct neo4j_struct, &value);
+    assert(v.nfields == 3);
+    assert(neo4j_type(v.fields[0]) == NEO4J_LIST);
+    assert(neo4j_type(v.fields[2]) == NEO4J_LIST);
 
-    const struct neo4j_list *nodes = (const struct neo4j_list *)&(v->fields[0]);
-    const struct neo4j_list *seq = (const struct neo4j_list *)&(v->fields[2]);
-    assert((seq->length % 2) == 0);
+    from_value(nodes, struct neo4j_list, (&v.fields[0]));
+    from_value(seq, struct neo4j_list, (&v.fields[2]));
+    assert((seq.length % 2) == 0);
 
-    if (hops > (seq->length / 2))
+    if (hops > (seq.length / 2))
     {
         return neo4j_null;
     }
 
     if (hops == 0)
     {
-        assert(nodes->length > 0 && neo4j_type(nodes->items[0]) == NEO4J_NODE);
-        return nodes->items[0];
+        assert(nodes.length > 0 && neo4j_type(nodes.items[0]) == NEO4J_NODE);
+        return nodes.items[0];
     }
 
     unsigned int seq_idx = ((hops - 1) * 2) + 1;
-    assert(seq_idx < seq->length);
-    assert(neo4j_type(seq->items[seq_idx]) == NEO4J_INT);
-    const struct neo4j_int *node_idx =
-        (const struct neo4j_int *)&(seq->items[seq_idx]);
-    assert(node_idx->value >= 0 && node_idx->value < nodes->length);
-    assert(neo4j_type(nodes->items[node_idx->value]) == NEO4J_NODE);
-    return nodes->items[node_idx->value];
+    assert(seq_idx < seq.length);
+    assert(neo4j_type(seq.items[seq_idx]) == NEO4J_INT);
+    from_value(node_idx, struct neo4j_int, (&seq.items[seq_idx]));
+    assert(node_idx.value >= 0 && node_idx.value < nodes.length);
+    assert(neo4j_type(nodes.items[node_idx.value]) == NEO4J_NODE);
+    return nodes.items[node_idx.value];
 }
 
 
@@ -1159,31 +1174,30 @@ neo4j_value_t neo4j_path_get_relationship(neo4j_value_t value,
 {
     REQUIRE(neo4j_type(value) == NEO4J_PATH, neo4j_null);
     ENSURE_NOT_NULL(bool, forward, false);
-    const struct neo4j_struct *v = (const struct neo4j_struct *)&value;
-    assert(v->nfields == 3);
-    assert(neo4j_type(v->fields[1]) == NEO4J_LIST);
-    assert(neo4j_type(v->fields[2]) == NEO4J_LIST);
+    from_value(v, struct neo4j_struct, &value);
+    assert(v.nfields == 3);
+    assert(neo4j_type(v.fields[1]) == NEO4J_LIST);
+    assert(neo4j_type(v.fields[2]) == NEO4J_LIST);
 
-    const struct neo4j_list *rels = (const struct neo4j_list *)&(v->fields[1]);
-    const struct neo4j_list *seq = (const struct neo4j_list *)&(v->fields[2]);
-    assert((seq->length % 2) == 0);
+    from_value(rels, struct neo4j_list, (&v.fields[1]));
+    from_value(seq, struct neo4j_list, (&v.fields[2]));
+    assert((seq.length % 2) == 0);
 
-    if (hops > (seq->length / 2))
+    if (hops > (seq.length / 2))
     {
         return neo4j_null;
     }
 
     unsigned int seq_idx = hops * 2;
-    assert(seq_idx < seq->length);
-    assert(neo4j_type(seq->items[seq_idx]) == NEO4J_INT);
-    const struct neo4j_int *rel_idx =
-        (const struct neo4j_int *)&(seq->items[seq_idx]);
-    assert((rel_idx->value > 0 && rel_idx->value <= rels->length) ||
-        (rel_idx->value < 0 && -(rel_idx->value) <= rels->length));
-    *forward = (rel_idx->value > 0);
-    unsigned int idx = (unsigned int)(llabs(rel_idx->value) - 1);
-    assert(neo4j_type(rels->items[idx]) == NEO4J_RELATIONSHIP);
-    return rels->items[idx];
+    assert(seq_idx < seq.length);
+    assert(neo4j_type(seq.items[seq_idx]) == NEO4J_INT);
+    from_value(rel_idx, struct neo4j_int, (&seq.items[seq_idx]));
+    assert((rel_idx.value > 0 && rel_idx.value <= rels.length) ||
+        (rel_idx.value < 0 && -(rel_idx.value) <= rels.length));
+    *forward = (rel_idx.value > 0);
+    unsigned int idx = (unsigned int)(llabs(rel_idx.value) - 1);
+    assert(neo4j_type(rels.items[idx]) == NEO4J_RELATIONSHIP);
+    return rels.items[idx];
 }
 
 // date
@@ -1196,27 +1210,24 @@ neo4j_value_t neo4j_date(const neo4j_value_t fields[1])
         return neo4j_null;
     }
 
-    struct neo4j_struct v =
+    return to_value(neo4j_struct,
             { ._type = NEO4J_DATE, ._vt_off = DATE_VT_OFF,
               .signature = NEO4J_DATE_SIGNATURE,
-              .fields = fields, .nfields = 1 };
-    return *((neo4j_value_t *)(&v));
+              .fields = fields, .nfields = 1 });
 }
 
 long long neo4j_date_days(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_DATE, 0);
-    return neo4j_int_value(
-        ((const struct neo4j_struct *)&value)->fields[0]
-        );
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_int_value(v.fields[0]);
 }
 
 time_t neo4j_date_time_t(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_DATE, 0);
-    return (time_t) 24*60*60*neo4j_int_value(
-        ((const struct neo4j_struct *)&value)->fields[0]
-        );
+    from_value(v, struct neo4j_struct, &value);
+    return (time_t) 24*60*60*neo4j_int_value(v.fields[0]);
 }
 // time
 
@@ -1228,38 +1239,33 @@ neo4j_value_t neo4j_time(const neo4j_value_t fields[2])
         return neo4j_null;
     }
 
-    struct neo4j_struct v =
+    return to_value(neo4j_struct,
             { ._type = NEO4J_TIME, ._vt_off = TIME_VT_OFF,
               .signature = NEO4J_TIME_SIGNATURE,
-              .fields = fields, .nfields = 2 };
-    return *((neo4j_value_t *)(&v));
+              .fields = fields, .nfields = 2 });
 }
 
 long long neo4j_time_nsecs(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_TIME, 0);
-    return neo4j_int_value(
-        ((const struct neo4j_struct *)&value)->fields[0]
-        );
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_int_value(v.fields[0]);
 }
 
 long long neo4j_time_secs_offset(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_TIME, 0);
-    return neo4j_int_value(
-        ((const struct neo4j_struct *)&value)->fields[1]
-        );
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_int_value(v.fields[1]);
 }
 
 struct timespec *neo4j_time_timespec(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_TIME, 0);
+    from_value(v, struct neo4j_struct, &value);
     struct timespec *ts = (struct timespec *) malloc(sizeof(struct timespec));
-    ts->tv_sec = (time_t) (
-	neo4j_int_value(((const struct neo4j_struct *)&value)->fields[0]) / 1000000000
-	);
-    ts->tv_nsec = (long int) neo4j_int_value(
-        ((const struct neo4j_struct *)&value)->fields[0]) % 1000000000;
+    ts->tv_sec = (time_t) (neo4j_int_value(v.fields[0]) / 1000000000);
+    ts->tv_nsec = (long int) neo4j_int_value(v.fields[0]) % 1000000000;
     return ts;
 }
 
@@ -1274,28 +1280,27 @@ neo4j_value_t neo4j_localtime(const neo4j_value_t fields[1])
         return neo4j_null;
     }
 
-    struct neo4j_struct v =
+    return to_value(neo4j_struct,
             { ._type = NEO4J_LOCALTIME, ._vt_off = LOCALTIME_VT_OFF,
               .signature = NEO4J_LOCALTIME_SIGNATURE,
-              .fields = fields, .nfields = 1 };
-    return *((neo4j_value_t *)(&v));
+              .fields = fields, .nfields = 1 });
 }
 
 long long neo4j_localtime_nsecs(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_LOCALTIME, 0);
-    return neo4j_int_value(((const struct neo4j_struct *)&value)->fields[0]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_int_value(v.fields[0]);
 }
 
 // the following returns the un-offset seconds (not sec since epoch)
 struct timespec *neo4j_localtime_timespec(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_LOCALTIME, 0);
+    from_value(v, struct neo4j_struct, &value);
     struct timespec *ts = (struct timespec *) malloc(sizeof(struct timespec));
-    ts->tv_sec = (time_t) neo4j_int_value(
-        ((const struct neo4j_struct *)&value)->fields[0]) / 1000000000;
-    ts->tv_nsec = (long int) neo4j_int_value(
-        ((const struct neo4j_struct *)&value)->fields[0]) % 1000000000;
+    ts->tv_sec = (time_t) neo4j_int_value(v.fields[0]) / 1000000000;
+    ts->tv_nsec = (long int) neo4j_int_value(v.fields[0]) % 1000000000;
     return ts;
 }
 
@@ -1311,40 +1316,41 @@ neo4j_value_t neo4j_datetime(const neo4j_value_t fields[3])
         return neo4j_null;
     }
 
-    struct neo4j_struct v =
+    return to_value(neo4j_struct,
             { ._type = NEO4J_DATETIME, ._vt_off = DATETIME_VT_OFF,
               .signature = NEO4J_DATETIME_SIGNATURE,
-              .fields = fields, .nfields = 3 };
-    return *((neo4j_value_t *)(&v));
+              .fields = fields, .nfields = 3 });
 }
 
 long long neo4j_datetime_secs(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_DATETIME, 0);
-    return neo4j_int_value(((const struct neo4j_struct *)&value)->fields[0]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_int_value(v.fields[0]);
 }
 
 long long neo4j_datetime_nsecs(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_DATETIME, 0);
-    return neo4j_int_value(((const struct neo4j_struct *)&value)->fields[1]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_int_value(v.fields[1]);
 }
 
 long long neo4j_datetime_secs_offset(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_DATETIME, 0);
-    return neo4j_int_value(((const struct neo4j_struct *)&value)->fields[2]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_int_value(v.fields[2]);
 }
 
 // the following returns seconds since the epoch ("UTC")
 struct timespec *neo4j_datetime_timespec(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_DATETIME, 0);
+    from_value(v, struct neo4j_struct, &value);
     struct timespec *ts = (struct timespec *) malloc(sizeof(struct timespec));
-    ts->tv_sec = (time_t) neo4j_int_value(
-        ((const struct neo4j_struct *)&value)->fields[0]);
-    ts->tv_nsec = (long int) neo4j_int_value(
-        ((const struct neo4j_struct *)&value)->fields[1]);
+    ts->tv_sec = (time_t) neo4j_int_value(v.fields[0]);
+    ts->tv_nsec = (long int) neo4j_int_value(v.fields[1]);
     return ts;
 }
 
@@ -1359,33 +1365,33 @@ neo4j_value_t neo4j_localdatetime(const neo4j_value_t fields[2])
         return neo4j_null;
     }
 
-    struct neo4j_struct v =
+    return to_value(neo4j_struct,
             { ._type = NEO4J_LOCALDATETIME, ._vt_off = LOCALDATETIME_VT_OFF,
               .signature = NEO4J_LOCALDATETIME_SIGNATURE,
-              .fields = fields, .nfields = 2 };
-    return *((neo4j_value_t *)(&v));
+              .fields = fields, .nfields = 2 });
 }
 
 long long neo4j_localdatetime_secs(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_LOCALDATETIME, 0);
-    return neo4j_int_value(((const struct neo4j_struct *)&value)->fields[0]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_int_value(v.fields[0]);
 }
 
 long long neo4j_localdatetime_nsecs(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_LOCALDATETIME, 0);
-    return neo4j_int_value(((const struct neo4j_struct *)&value)->fields[1]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_int_value(v.fields[1]);
 }
 
 struct timespec *neo4j_localdatetime_timespec(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_LOCALDATETIME, 0);
+    from_value(v, struct neo4j_struct, &value);
     struct timespec *ts = (struct timespec *) malloc(sizeof(struct timespec));
-    ts->tv_sec = (time_t) neo4j_int_value(
-        ((const struct neo4j_struct *)&value)->fields[0]);
-    ts->tv_nsec = (long int) neo4j_int_value(
-        ((const struct neo4j_struct *)&value)->fields[1]);
+    ts->tv_sec = (time_t) neo4j_int_value(v.fields[0]);
+    ts->tv_nsec = (long int) neo4j_int_value(v.fields[1]);
     return ts;
 }
 
@@ -1402,35 +1408,38 @@ neo4j_value_t neo4j_duration(const neo4j_value_t fields[4])
         return neo4j_null;
     }
 
-    struct neo4j_struct v =
+    return to_value(neo4j_struct,
             { ._type = NEO4J_DURATION, ._vt_off = DURATION_VT_OFF,
               .signature = NEO4J_DURATION_SIGNATURE,
-              .fields = fields, .nfields = 4 };
-    return *((neo4j_value_t *)(&v));
+              .fields = fields, .nfields = 4 });
 }
 
 long long neo4j_duration_months(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_DURATION, 0);
-    return neo4j_int_value(((const struct neo4j_struct *)&value)->fields[0]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_int_value(v.fields[0]);
 }
 
 long long neo4j_duration_days(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_DURATION, 0);
-    return neo4j_int_value(((const struct neo4j_struct *)&value)->fields[1]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_int_value(v.fields[1]);
 }
 
 long long neo4j_duration_secs(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_DURATION, 0);
-    return neo4j_int_value(((const struct neo4j_struct *)&value)->fields[2]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_int_value(v.fields[2]);
 }
 
 long long neo4j_duration_nsecs(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_DURATION, 0);
-    return neo4j_int_value(((const struct neo4j_struct *)&value)->fields[3]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_int_value(v.fields[3]);
 }
 
 // point2d
@@ -1445,29 +1454,31 @@ neo4j_value_t neo4j_point2d(const neo4j_value_t fields[3])
         return neo4j_null;
     }
 
-    struct neo4j_struct v =
+    return to_value(neo4j_struct,
             { ._type = NEO4J_POINT2D, ._vt_off = POINT2D_VT_OFF,
               .signature = NEO4J_POINT2D_SIGNATURE,
-              .fields = fields, .nfields = 3 };
-    return *((neo4j_value_t *)(&v));
+              .fields = fields, .nfields = 3 });
 }
 
 long long neo4j_point2d_srid(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_POINT2D, 0);
-    return neo4j_int_value(((const struct neo4j_struct *)&value)->fields[0]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_int_value(v.fields[0]);
 }
 
 double neo4j_point2d_x(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_POINT2D, 0);
-    return neo4j_float_value(((const struct neo4j_struct *)&value)->fields[1]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_float_value(v.fields[1]);
 }
 
 double neo4j_point2d_y(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_POINT2D, 0);
-    return neo4j_float_value(((const struct neo4j_struct *)&value)->fields[2]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_float_value(v.fields[2]);
 }
 
 
@@ -1484,35 +1495,38 @@ neo4j_value_t neo4j_point3d(const neo4j_value_t fields[4])
         return neo4j_null;
     }
 
-    struct neo4j_struct v =
+    return to_value(neo4j_struct,
             { ._type = NEO4J_POINT3D, ._vt_off = POINT3D_VT_OFF,
               .signature = NEO4J_POINT3D_SIGNATURE,
-              .fields = fields, .nfields = 4 };
-    return *((neo4j_value_t *)(&v));
+              .fields = fields, .nfields = 4 });
 }
 
 long long neo4j_point3d_srid(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_POINT3D, 0);
-    return neo4j_int_value(((const struct neo4j_struct *)&value)->fields[0]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_int_value(v.fields[0]);
 }
 
 double neo4j_point3d_x(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_POINT3D, 0);
-    return neo4j_float_value(((const struct neo4j_struct *)&value)->fields[1]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_float_value(v.fields[1]);
 }
 
 double neo4j_point3d_y(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_POINT3D, 0);
-    return neo4j_float_value(((const struct neo4j_struct *)&value)->fields[2]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_float_value(v.fields[2]);
 }
 
 double neo4j_point3d_z(neo4j_value_t value)
 {
     REQUIRE(neo4j_type(value) == NEO4J_POINT3D, 0);
-    return neo4j_float_value(((const struct neo4j_struct *)&value)->fields[3]);
+    from_value(v, struct neo4j_struct, &value);
+    return neo4j_float_value(v.fields[3]);
 }
 
 // identity
@@ -1529,9 +1543,8 @@ neo4j_value_t neo4j_identity(long long value)
         return neo4j_null;
     }
 #endif
-    struct neo4j_int v =
-        { ._type = NEO4J_IDENTITY, ._vt_off = IDENTITY_VT_OFF, .value = value };
-    return *((neo4j_value_t *)(&v));
+    return to_value(neo4j_int,
+        { ._type = NEO4J_IDENTITY, ._vt_off = IDENTITY_VT_OFF, .value = value });
 }
 
 // element id
@@ -1626,7 +1639,7 @@ neo4j_value_t neo4j_struct(uint8_t signature,
 	return neo4j_point3d(fields);
 	break;
     default:
-	return *((neo4j_value_t *)(&v));
+	    return to_value(neo4j_struct, v);
 	break;
     }
 }
@@ -1634,21 +1647,21 @@ neo4j_value_t neo4j_struct(uint8_t signature,
 
 bool struct_eq(const neo4j_value_t *value, const neo4j_value_t *other)
 {
-    const struct neo4j_struct *v = (const struct neo4j_struct *)value;
-    const struct neo4j_struct *o = (const struct neo4j_struct *)other;
+    from_value(v, struct neo4j_struct, value);
+    from_value(o, struct neo4j_struct, other);
 
-    if (v->signature != o->signature)
+    if (v.signature != o.signature)
     {
         return false;
     }
-    if (v->nfields != o->nfields)
+    if (v.nfields != o.nfields)
     {
         return false;
     }
 
-    for (unsigned int i = 0; i < v->nfields; ++i)
+    for (unsigned int i = 0; i < v.nfields; ++i)
     {
-        if (!neo4j_eq(v->fields[i], o->fields[i]))
+        if (!neo4j_eq(v.fields[i], o.fields[i]))
         {
             return false;
         }
