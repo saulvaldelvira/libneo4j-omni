@@ -320,7 +320,7 @@ neo4j_result_stream_t *tx_run(neo4j_transaction_t *tx,
       tx->failure = errno;
       return NULL;
     }
-  if (neo4j_check_failure(tx->results))
+  if (neo4j_check_failure(tx->results) == NEO4J_STATEMENT_EVALUATION_FAILED)
     {
       if (strcmp(neo4j_error_code(tx->results),
                  "Neo.ClientError.Transaction.TransactionTimedOut") == 0) {
@@ -504,7 +504,7 @@ const char *neo4j_tx_failure_code(neo4j_transaction_t *tx)
   if (neo4j_is_null(tx->failure_code)) {
     return "";
   }
-  char buf[128];
+  static THREAD_LOCAL char buf[128];
   return neo4j_string_value(tx->failure_code, buf, 128);
 }
 
@@ -532,6 +532,9 @@ const char *neo4j_tx_commit_bookmark(neo4j_transaction_t *tx)
 
 void neo4j_free_tx(neo4j_transaction_t *tx)
 {
+  if (tx == NULL) {
+    return;
+  }
   // free bookmarks array space
   if (tx->num_bookmarks > 0) {
     neo4j_free(tx->allocator, (void *)tx->bookmarks);
